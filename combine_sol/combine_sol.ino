@@ -1,4 +1,4 @@
-// === Z축 제어 핀 ===
+// === y축 제어 핀 ===
 const int Y_LEFT_PUL = 13;
 const int Y_LEFT_DIR = 12;
 const int Y_RIGHT_PUL = 11;
@@ -36,7 +36,7 @@ void setup() {
 
   pinMode(ELEV_PUL, OUTPUT);
   pinMode(ELEV_DIR, OUTPUT);
-  for (int i = 0; i < 4; i++) pinMode(sensorPins[i], INPUT);
+  for (int i = 0; i < 4; i++) pinMode(sensorPins[i], INPUT_PULLUP);
 
   pinMode(Y_LEFT_SENSOR_BACK, INPUT_PULLUP);
   pinMode(Y_LEFT_SENSOR_FRONT, INPUT_PULLUP);
@@ -133,8 +133,10 @@ void generateY_RIGHT_PULse() {
 
 void generateElevPulse() {
   int period_us = 1000000 / elevFrequency;
-  digitalWrite(ELEV_PUL, HIGH); delayMicroseconds(period_us / 2);
-  digitalWrite(ELEV_PUL, LOW); delayMicroseconds(period_us / 2);
+  digitalWrite(ELEV_PUL, HIGH); 
+  delayMicroseconds(period_us / 2);
+  digitalWrite(ELEV_PUL, LOW); 
+  delayMicroseconds(period_us / 2);
 }
 
 // === 현재 층 업데이트 ===

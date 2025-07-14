@@ -20,11 +20,8 @@ const int L_solenoid = 32;
 const int R_solenoid = 34;
 
 // === 설정값 ===
-const int frequency = 2000;
-const int elevFrequency = 500;
-
-const int step = 7000;
-const int pulse_delay = 500; // 마이크로초
+const int frequency = 4000;
+const int elevFrequency = 2000;
 
 int currentFloor = 0;
 bool isMovingElevator = false;
@@ -49,9 +46,6 @@ void setup() {
   pinMode(L_solenoid, OUTPUT);
   pinMode(R_solenoid, OUTPUT);
 
-  digitalWrite(R_solenoid, HIGH);
-  digitalWrite(L_solenoid, HIGH);
-
   Serial.begin(9600);
   Serial.println("시스템 시작. 명령어 입력:");
 }
@@ -73,29 +67,20 @@ void loop() {
         break;
       case 10:    //왼쪽 전자석  off
         digitalWrite(L_solenoid, HIGH);
-        Serial.println("L_solenoid ON");
-        break;
-      case 11:    //왼쪽 전자석  On
-        digitalWrite(L_solenoid, LOW);
         Serial.println("L_solenoid OFF");
         break;
-      case 12:    //오른쪽 전자석  Off
-        digitalWrite(R_solenoid, HIGH);
-        Serial.println("R_solenoid ON");
+      case 11:    //왼쪽 전자석  off
+        digitalWrite(L_solenoid, LOW);
+        Serial.println("L_solenoid ON");
         break;
-      case 13:    //오른쪽 전자석  On
-        digitalWrite(R_solenoid, LOW);
+      case 12:    //오른쪽 전자석  on
+        digitalWrite(R_solenoid, HIGH);
         Serial.println("R_solenoid OFF");
         break;
-      case 14:    //하강
-        digitalWrite(ELEV_DIR, LOW);
-        moveSteps(3000);
+      case 13:    //오른쪽 전자석  Off
+        digitalWrite(R_solenoid, LOW);
+        Serial.println("R_solenoid ON");
         break;
-      case 15:    //상승
-        digitalWrite(ELEV_DIR, HIGH);
-        moveSteps(3000);
-        currentFloor = 3;
-        break;  
     }
   }
 
@@ -191,15 +176,6 @@ void moveToFloor(int targetFloor) {
       Serial.println(currentFloor);
       isMovingElevator = false;
     }
-  }
-}
-
-void moveSteps(int steps) {   //step 제
-  for (int i = 0; i < steps; i++) {
-    digitalWrite(ELEV_PUL, HIGH);
-    delayMicroseconds(pulse_delay);
-    digitalWrite(ELEV_PUL, LOW);
-    delayMicroseconds(pulse_delay);
   }
 }
 
