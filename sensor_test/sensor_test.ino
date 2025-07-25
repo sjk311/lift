@@ -5,7 +5,7 @@ const int zSensorPins[4] = {22, 24, 26, 28}; // Z축 센서
 float filteredFloor[4] = {1.0, 1.0, 1.0, 1.0};
 float filteredZ[4]     = {1.0, 1.0, 1.0, 1.0};
 const float alpha = 0.9;
-const float threshold = 0.5;
+const float threshold = 0.2;
 
 // 상태 기록 (변화 감지용)
 int prevRawFloor[4] = {HIGH, HIGH, HIGH, HIGH};

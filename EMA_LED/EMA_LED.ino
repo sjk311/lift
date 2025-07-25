@@ -2,7 +2,7 @@
 
 // === 핀 설정 ===
 const int floorSensorPins[4] = {4, 5, 6, 7};           // 1~4층 센서
-const int zSensorPins[4] = {22, 24, 26, 28};           // Z축 센서
+const int ySensorPins[4] = {22, 24, 26, 28};           // y축 센서
 
 const int Y_LEFT_PUL = 13;
 const int Y_LEFT_DIR = 12;
@@ -26,7 +26,7 @@ int prevRawZ[4] = {HIGH, HIGH, HIGH, HIGH};
 int prevFilteredZ[4] = {HIGH, HIGH, HIGH, HIGH};
 
 const float alpha = 0.9;
-const float threshold = 0.3;
+const float threshold = 0;
 
 // === 기타 설정 ===
 const int frequency = 7000;
@@ -51,7 +51,7 @@ void setup() {
 
   for (int i = 0; i < 4; i++) {
     pinMode(floorSensorPins[i], INPUT_PULLUP);
-    pinMode(zSensorPins[i], INPUT_PULLUP);
+    pinMode(ySensorPins[i], INPUT_PULLUP);
   }
 
   pinMode(Y_LEFT_PUL, OUTPUT);  pinMode(Y_LEFT_DIR, OUTPUT);
@@ -68,8 +68,8 @@ void setup() {
   Serial.println("=== 시스템 시작됨 ===");
 }
 void loop() {
-  updateAndPrintFloorSensors();
-  updateAndPrintZSensors();
+  updateCurrentFloor();
+  updateAndPrintYSensors();
 
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
@@ -96,7 +96,8 @@ void loop() {
       turnOffPanels();
       Serial.println("LED: OFF");
 
-    } else {
+    } 
+    else {
       currentCommand = input.toInt();
 
       switch (currentCommand) {
@@ -181,33 +182,33 @@ void checkAndRunMotor() {
     case 5:
       Serial.println("Y축 왼쪽 하강 중...");
       digitalWrite(Y_LEFT_DIR, HIGH);
-      while (getFilteredZState(0) == HIGH) {
+      while (getFilteredYState(0) == HIGH) {
         generatePulse(Y_LEFT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
     case 6:
       Serial.println("Y축 왼쪽 상승 중...");
       digitalWrite(Y_LEFT_DIR, LOW);
-      while (getFilteredZState(1) == HIGH) {
+      while (getFilteredYState(1) == HIGH) {
         generatePulse(Y_LEFT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
     case 7:
       Serial.println("Y축 오른쪽 하강 중...");
       digitalWrite(Y_RIGHT_DIR, HIGH);
-      while (getFilteredZState(2) == HIGH) {
+      while (getFilteredYState(2) == HIGH) {
         generatePulse(Y_RIGHT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
     case 8:
       Serial.println("Y축 오른쪽 상승 중...");
       digitalWrite(Y_RIGHT_DIR, LOW);
-      while (getFilteredZState(3) == HIGH) {
+      while (getFilteredYState(3) == HIGH) {
         generatePulse(Y_RIGHT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
   }
@@ -224,30 +225,42 @@ void moveToFloor(int targetFloor) {
   }
 
   isMovingElevator = true;
-  digitalWrite(ELEV_DIR, (targetFloor > currentFloor) ? HIGH : LOW);
-  Serial.println(targetFloor > currentFloor ? "엘리베이터 상승 중..." : "엘리베이터 하강 중...");
 
-  while (isMovingElevator) {
-    generatePulse(ELEV_PUL, elevFrequency);
-    updateAndPrintFloorSensors();
-
-    for (int i = 0; i < 4; i++) {
-      if ((filteredFloor[i] < threshold) && currentFloor != (i + 1)) {
-        currentFloor = i + 1;
-        Serial.print("도착 층: "); Serial.println(currentFloor);
-        if (currentFloor == targetFloor) {
-          isMovingElevator = false;
-          break;
-        }
-      }
-    }
+  if (targetFloor > currentFloor) {
+    Serial.println("상층으로 이동 중...");
+    digitalWrite(ELEV_DIR, HIGH);
+  } else {
+    Serial.println("하층으로 이동 중...");
+    digitalWrite(ELEV_DIR, LOW);
   }
 
-  Serial.println("엘리베이터 정지");
+  while (isMovingElevator) {
+    generateElevPulse();
+    updateCurrentFloor();
+    if (currentFloor == targetFloor) {
+      Serial.print("도착 층: ");
+      Serial.println(currentFloor);
+      isMovingElevator = false;
+    }
+  }
+}
+// === 현재 층 업데이트 ===
+void updateCurrentFloor() {
+  for (int i = 0; i < 4; i++) {
+    if (digitalRead(floorSensorPins[i]) == LOW) {
+      if (currentFloor != i + 1) {
+        currentFloor = i + 1;
+        Serial.print("현재 층: ");
+        Serial.println(currentFloor);
+      }
+      break;
+    }
+  }
 }
 
+
 // === 센서 EMA 출력 ===
-void updateAndPrintFloorSensors() {
+/*void updateAndPrintFloorSensors() {
   for (int i = 0; i < 4; i++) {
     int raw = digitalRead(floorSensorPins[i]);
     float signal = (raw == LOW) ? 0.0 : 1.0;
@@ -264,13 +277,16 @@ void updateAndPrintFloorSensors() {
       printTimestamp(); Serial.print("[필터] "); Serial.print(floorLabels[i]); Serial.print(" 센서: ");
       Serial.println(filtered == LOW ? "감지됨" : "해제됨");
       prevFilteredFloor[i] = filtered;
+      currentFloor = i ;
     }
+    
   }
 }
+*/
 
-void updateAndPrintZSensors() {
+void updateAndPrintYSensors() {
   for (int i = 0; i < 4; i++) {
-    int raw = digitalRead(zSensorPins[i]);
+    int raw = digitalRead(ySensorPins[i]);
     float signal = (raw == LOW) ? 0.0 : 1.0;
     filteredZ[i] = alpha * filteredZ[i] + (1 - alpha) * signal;
     int filtered = (filteredZ[i] < threshold) ? LOW : HIGH;
@@ -286,11 +302,12 @@ void updateAndPrintZSensors() {
       Serial.println(filtered == LOW ? "감지됨" : "해제됨");
       prevFilteredZ[i] = filtered;
     }
+    //currentFloor = i;
   }
 }
 
 // === 필터 상태 가져오기 ===
-int getFilteredZState(int i) {
+int getFilteredYState(int i) {
   return (filteredZ[i] < threshold) ? LOW : HIGH;
 }
 
@@ -308,6 +325,15 @@ void stopAllMotors() {
   digitalWrite(ELEV_PUL, LOW);
   Serial.println("모터 정지됨.");
 }
+
+void generateElevPulse() {
+  int period_us = 1000000 / elevFrequency;
+  digitalWrite(ELEV_PUL, HIGH); 
+  delayMicroseconds(period_us / 2);
+  digitalWrite(ELEV_PUL, LOW); 
+  delayMicroseconds(period_us / 2);
+}
+
 
 // === 타임스탬프 출력 ===
 void printTimestamp() {

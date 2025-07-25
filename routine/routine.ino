@@ -2,7 +2,7 @@
 
 // === 핀 설정 ===
 const int floorSensorPins[4] = {4, 5, 6, 7};           // 1~4층 센서
-const int zSensorPins[4] = {22, 24, 26, 28};           // Z축 센서
+const int ySensorPins[4] = {22, 24, 26, 28};           // Y축 센서
 
 const int Y_LEFT_PUL = 13;
 const int Y_LEFT_DIR = 12;
@@ -15,15 +15,15 @@ const int R_solenoid = 34;
 
 // === 레이블 ===
 const char* floorLabels[4] = {"1층", "2층", "3층", "4층"};
-const char* zLabels[4] = {"왼쪽 BACK", "왼쪽 FRONT", "오른쪽 BACK", "오른쪽 FRONT"};
+const char* yLabels[4] = {"왼쪽 BACK", "왼쪽 FRONT", "오른쪽 BACK", "오른쪽 FRONT"};  // Y축 센서
 
 // === 필터 관련 ===
 float filteredFloor[4] = {1, 1, 1, 1};
-float filteredZ[4] = {1, 1, 1, 1};
+float filteredY[4] = {1, 1, 1, 1};
 int prevRawFloor[4] = {HIGH, HIGH, HIGH, HIGH};
 int prevFilteredFloor[4] = {HIGH, HIGH, HIGH, HIGH};
-int prevRawZ[4] = {HIGH, HIGH, HIGH, HIGH};
-int prevFilteredZ[4] = {HIGH, HIGH, HIGH, HIGH};
+int prevRawY[4] = {HIGH, HIGH, HIGH, HIGH};
+int prevFilteredY[4] = {HIGH, HIGH, HIGH, HIGH};
 
 const float alpha = 0.9;
 const float threshold = 0.3;
@@ -51,7 +51,7 @@ void setup() {
 
   for (int i = 0; i < 4; i++) {
     pinMode(floorSensorPins[i], INPUT_PULLUP);
-    pinMode(zSensorPins[i], INPUT_PULLUP);
+    pinMode(ySensorPins[i], INPUT_PULLUP);
   }
 
   pinMode(Y_LEFT_PUL, OUTPUT);  pinMode(Y_LEFT_DIR, OUTPUT);
@@ -73,17 +73,15 @@ void setup() {
   Serial.println("=== 시스템 시작됨 ===");
 }
 
-
 void loop() {
   updateCurrentFloor();
-  updateAndPrintZSensors();
+  updateAndPrintYSensors();
 
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim();
     motorRunning = (input.toInt() != 0);
 
-    // LED 제어 명령
     if (input == "r") {
       setBothPanels(255, 0, 0); Serial.println("LED: 빨강");
     } else if (input == "g") {
@@ -92,13 +90,11 @@ void loop() {
       setBothPanels(0, 0, 255); Serial.println("LED: 파랑");
     } else if (input == "y") {
       setBothPanels(255, 255, 0); Serial.println("LED: 노랑");
-    } 
-    else if (input == "w") {
-      setBothPanels(255, 255, 255); Serial.println("LED: 노랑");}
-    else if (input == "off") {
+    } else if (input == "w") {
+      setBothPanels(255, 255, 255); Serial.println("LED: 흰색");
+    } else if (input == "off") {
       turnOffPanels(); Serial.println("LED: OFF");
 
-    // 엘리베이터 수동 제어 
     } else if (input.startsWith("u ") || input.startsWith("d ")) {
       int spaceIndex = input.indexOf(' ');
       String direction = input.substring(0, spaceIndex);
@@ -120,8 +116,6 @@ void loop() {
 
         Serial.println("ELEV 이동 완료");
       }
-
-    // 나머지 기존 명령 처리
     } else {
       currentCommand = input.toInt();
 
@@ -135,46 +129,54 @@ void loop() {
           break;
 
         case 10:
-          digitalWrite(L_solenoid, HIGH);
-          Serial.println("L_solenoid OFF");
-          break;
-
+          digitalWrite(L_solenoid, HIGH); Serial.println("L_solenoid OFF"); break;
         case 11:
-          digitalWrite(L_solenoid, LOW);
-          Serial.println("L_solenoid ON");
-          break;
-
+          digitalWrite(L_solenoid, LOW); Serial.println("L_solenoid ON"); break;
         case 12:
-          digitalWrite(R_solenoid, HIGH);
-          Serial.println("R_solenoid oFF");
-          break;
-
+          digitalWrite(R_solenoid, HIGH); Serial.println("R_solenoid OFF"); break;
         case 13:
-          digitalWrite(R_solenoid, LOW);
-          Serial.println("R_solenoid ON");
-          break;
+          digitalWrite(R_solenoid, LOW); Serial.println("R_solenoid ON"); break;
 
-        case 20: {
+        case 20:
           digitalWrite(ELEV_DIR, HIGH);
           for (int cnt = 0; cnt < 150; cnt++) {
-            digitalWrite(ELEV_PUL, HIGH);
-            delayMicroseconds(pulse_delay);
-            digitalWrite(ELEV_PUL, LOW);
-            delayMicroseconds(pulse_delay);
+            digitalWrite(ELEV_PUL, HIGH); delayMicroseconds(pulse_delay);
+            digitalWrite(ELEV_PUL, LOW);  delayMicroseconds(pulse_delay);
           }
           break;
-        }
 
-        case 21: {
+        case 21:
           digitalWrite(ELEV_DIR, LOW);
           for (int cnt = 0; cnt < 150; cnt++) {
-            digitalWrite(ELEV_PUL, HIGH);
-            delayMicroseconds(pulse_delay);
-            digitalWrite(ELEV_PUL, LOW);
-            delayMicroseconds(pulse_delay);
+            digitalWrite(ELEV_PUL, HIGH); delayMicroseconds(pulse_delay);
+            digitalWrite(ELEV_PUL, LOW);  delayMicroseconds(pulse_delay);
           }
           break;
-        }
+        case 30:
+          PickupRoutine(1,1);
+          break; 
+        case 31:
+          PlaceRoutine(1,1);
+          break; 
+        case 32:
+          PickupRoutine(2,1);
+          break; 
+        case 33:
+          PlaceRoutine(2,1);
+          break; 
+        case 34:
+          PickupRoutine(4,1);
+          break; 
+        case 35:
+          PlaceRoutine(4,1);
+          break; 
+        case 36:
+          PickupRoutine(2,2);
+          break; 
+        case 37:
+          PlaceRoutine(2,2);
+          break; 
+          
       }
     }
   }
@@ -182,8 +184,6 @@ void loop() {
   if (motorRunning) checkAndRunMotor();
   delay(10);
 }
-
-
 
 // === 네오픽셀 함수 ===
 void setBothPanels(uint8_t r, uint8_t g, uint8_t b) {
@@ -194,6 +194,7 @@ void setBothPanels(uint8_t r, uint8_t g, uint8_t b) {
   leftStrip.show();
   rightStrip.show();
 }
+
 void turnOffPanels() {
   setBothPanels(0, 0, 0);
 }
@@ -204,33 +205,36 @@ void checkAndRunMotor() {
     case 5:
       Serial.println("Y축 왼쪽 하강 중...");
       digitalWrite(Y_LEFT_DIR, HIGH);
-      while (getFilteredZState(0) == HIGH) {
+      while (getFilteredYState(0) == HIGH) {
         generatePulse(Y_LEFT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
+
     case 6:
       Serial.println("Y축 왼쪽 상승 중...");
       digitalWrite(Y_LEFT_DIR, LOW);
-      while (getFilteredZState(1) == HIGH) {
+      while (getFilteredYState(1) == HIGH) {
         generatePulse(Y_LEFT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
+
     case 7:
       Serial.println("Y축 오른쪽 하강 중...");
       digitalWrite(Y_RIGHT_DIR, HIGH);
-      while (getFilteredZState(2) == HIGH) {
+      while (getFilteredYState(2) == HIGH) {
         generatePulse(Y_RIGHT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
+
     case 8:
       Serial.println("Y축 오른쪽 상승 중...");
       digitalWrite(Y_RIGHT_DIR, LOW);
-      while (getFilteredZState(3) == HIGH) {
+      while (getFilteredYState(3) == HIGH) {
         generatePulse(Y_RIGHT_PUL, frequency);
-        updateAndPrintZSensors();
+        updateAndPrintYSensors();
       }
       break;
   }
@@ -263,14 +267,16 @@ void moveToFloor(int targetFloor) {
       Serial.print("도착 층: ");
       Serial.println(currentFloor);
       isMovingElevator = false;
+      Serial.write(100);
     }
   }
 }
+
 void generateElevPulse() {
   int period_us = 1000000 / elevFrequency;
-  digitalWrite(ELEV_PUL, HIGH); 
+  digitalWrite(ELEV_PUL, HIGH);
   delayMicroseconds(period_us / 2);
-  digitalWrite(ELEV_PUL, LOW); 
+  digitalWrite(ELEV_PUL, LOW);
   delayMicroseconds(period_us / 2);
 }
 
@@ -288,31 +294,31 @@ void updateCurrentFloor() {
   }
 }
 
-
-void updateAndPrintZSensors() {
+// === Y축 센서 업데이트 및 출력 ===
+void updateAndPrintYSensors() {
   for (int i = 0; i < 4; i++) {
-    int raw = digitalRead(zSensorPins[i]);
+    int raw = digitalRead(ySensorPins[i]);
     float signal = (raw == LOW) ? 0.0 : 1.0;
-    filteredZ[i] = alpha * filteredZ[i] + (1 - alpha) * signal;
-    int filtered = (filteredZ[i] < threshold) ? LOW : HIGH;
+    filteredY[i] = alpha * filteredY[i] + (1 - alpha) * signal;
+    int filtered = (filteredY[i] < threshold) ? LOW : HIGH;
 
-    if (raw != prevRawZ[i]) {
-      printTimestamp(); Serial.print("[원본] "); Serial.print(zLabels[i]); Serial.print(" 센서: ");
+    if (raw != prevRawY[i]) {
+      printTimestamp(); Serial.print("[원본] "); Serial.print(yLabels[i]); Serial.print(" 센서: ");
       Serial.println(raw == LOW ? "감지됨" : "해제됨");
-      prevRawZ[i] = raw;
+      prevRawY[i] = raw;
     }
 
-    if (filtered != prevFilteredZ[i]) {
-      printTimestamp(); Serial.print("[필터] "); Serial.print(zLabels[i]); Serial.print(" 센서: ");
+    if (filtered != prevFilteredY[i]) {
+      printTimestamp(); Serial.print("[필터] "); Serial.print(yLabels[i]); Serial.print(" 센서: ");
       Serial.println(filtered == LOW ? "감지됨" : "해제됨");
-      prevFilteredZ[i] = filtered;
+      prevFilteredY[i] = filtered;
     }
   }
 }
 
 // === 필터 상태 가져오기 ===
-int getFilteredZState(int i) {
-  return (filteredZ[i] < threshold) ? LOW : HIGH;
+int getFilteredYState(int i) {
+  return (filteredY[i] < threshold) ? LOW : HIGH;
 }
 
 // === 펄스 생성 ===
@@ -321,6 +327,67 @@ void generatePulse(int pin, int freq) {
   digitalWrite(pin, HIGH); delayMicroseconds(period / 2);
   digitalWrite(pin, LOW);  delayMicroseconds(period / 2);
 }
+
+
+void PickupRoutine(int floor, int target) {
+  // 1. 해당 층으로 이동
+  moveToFloor(floor);
+
+  if (target == 1) {
+    // 상품 박스 꺼내기 (왼쪽)
+    Serial.println("상품 박스 꺼내기 중...");
+    currentCommand = 6; motorRunning = true; checkAndRunMotor();  // 왼쪽 전진
+    digitalWrite(L_solenoid, LOW); delay(500);                   // 왼쪽 솔레노이드 ON
+    currentCommand = 5; motorRunning = true; checkAndRunMotor(); // 왼쪽 후진
+    moveToFloor(2);
+    Serial.write(210);  // 완료 코드: 상품 꺼냄
+  }
+  else if (target == 2) {
+    // 고객 박스 꺼내기 (오른쪽)
+    Serial.println("고객 박스 꺼내기 중...");
+    currentCommand = 8; motorRunning = true; checkAndRunMotor();  // 오른쪽 전진
+    digitalWrite(R_solenoid, LOW); delay(500);                   // 오른쪽 솔레노이드 ON
+    currentCommand = 7; motorRunning = true; checkAndRunMotor(); // 오른쪽 후진
+    moveToFloor(2);
+    Serial.write(211);  // 완료 코드: 고객 꺼냄
+  }
+  else {
+    Serial.println("잘못된 대상입니다 (1: 상품, 2: 고객)");
+  }
+
+  Serial.println("꺼내기 루틴 완료됨");
+}
+
+void PlaceRoutine(int floor, int target) {
+  // 1. 해당 층으로 이동
+  moveToFloor(floor);
+
+  if (target == 1) {
+    // 상품 박스 넣기 (왼쪽)
+    Serial.println("상품 박스 넣기 중...");
+    currentCommand = 6; motorRunning = true; checkAndRunMotor();  // 왼쪽 전진
+    digitalWrite(L_solenoid, HIGH); delay(500);                  // 왼쪽 솔레노이드 OFF
+    currentCommand = 5; motorRunning = true; checkAndRunMotor(); // 왼쪽 후진
+    Serial.write(212);  // 완료 코드: 상품 넣음
+  }
+  else if (target == 2) {
+    // 고객 박스 넣기 (오른쪽)
+    Serial.println("고객 박스 넣기 중...");
+    currentCommand = 8; motorRunning = true; checkAndRunMotor();  // 오른쪽 전진
+    digitalWrite(R_solenoid, HIGH); delay(500);                  // 오른쪽 솔레노이드 OFF
+    currentCommand = 7; motorRunning = true; checkAndRunMotor(); // 오른쪽 후진
+    Serial.write(213);  // 완료 코드: 고객 넣음
+  }
+  else {
+    Serial.println("잘못된 대상입니다 (1: 상품, 2: 고객)");
+  }
+
+  Serial.println("내리기 루틴 완료됨");
+}
+
+
+
+
 
 // === 전체 모터 정지 ===
 void stopAllMotors() {
